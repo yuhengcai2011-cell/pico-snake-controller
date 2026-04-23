@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pico Snake Controller</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #222; color: white; touch-action: manipulation; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; width: 300px; margin: 40px auto; }
+        button { width: 90px; height: 90px; border-radius: 15px; border: none; background: #444; color: white; font-weight: bold; font-size: 1.2rem; }
+        button:active { background: #666; transform: scale(0.95); }
+        .up { grid-column: 2; background: #e74c3c; }
+        .left { grid-column: 1; background: #3498db; }
+        .right { grid-column: 3; background: #f1c40f; color: black; }
+        .down { grid-column: 2; background: #2ecc71; }
+        #connectBtn { padding: 15px 30px; font-size: 1rem; border-radius: 30px; background: #9b59b6; color: white; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Pico Arcade</h1>
+    <button id="connectBtn" onclick="connect()">Connect to Pico</button>
+    
+    <div class="grid">
+        <button class="up" ontouchstart="send('UP')">UP</button>
+        <button class="left" ontouchstart="send('LEFT')">LEFT</button>
+        <button class="right" ontouchstart="send('RIGHT')">RIGHT</button>
+        <button class="down" ontouchstart="send('DOWN')">DOWN</button>
+    </div>
+
+    <script>
+        let char;
+        const serviceUuid = 0x181A;
+        const charUuid = 0x2A6E;
+
+        async function connect() {
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'Pico-Snake' }],
+                    optionalServices: [serviceUuid]
+                });
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(serviceUuid);
+                char = await service.getCharacteristic(charUuid);
+                document.getElementById('connectBtn').innerText = "CONNECTED";
+                document.getElementById('connectBtn').style.background = "#27ae60";
+            } catch (e) {
+                console.log(e);
+                alert("Connection failed: " + e);
+            }
+        }
+
+        async function send(cmd) {
+            if (char) {
+                try {
+                    await char.writeValue(new TextEncoder().encode(cmd));
+                } catch (e) {
+                    console.log("Send failed", e);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
