@@ -3,99 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pico Arcade Launcher</title>
+    <title>Pico Snake Controller</title>
     <style>
-        body { font-family: -apple-system, sans-serif; text-align: center; background: #121212; color: white; margin: 0; padding: 20px; }
-        .hidden { display: none; }
-        .card { background: #1e1e1e; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 400px; margin: auto; }
-        
-        /* Controller Styles */
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 30px; }
-        .btn { width: 90px; height: 90px; border-radius: 50%; border: none; background: #333; color: white; font-size: 1.2rem; font-weight: bold; }
-        .up { grid-column: 2; background: #ff4757; }
-        .left { grid-column: 1; background: #1e90ff; }
-        .right { grid-column: 3; background: #ffa502; }
-        .down { grid-column: 2; background: #2ed573; }
-        
-        /* Warning/Launch Styles */
-        .launch-btn { background: #9b59b6; color: white; padding: 15px 30px; border-radius: 30px; text-decoration: none; display: inline-block; font-weight: bold; margin-top: 20px; }
-        .step { text-align: left; margin: 20px 0; font-size: 0.9rem; color: #bbb; }
+        body { font-family: sans-serif; text-align: center; background: #222; color: white; touch-action: manipulation; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; width: 300px; margin: 40px auto; }
+        button { width: 90px; height: 90px; border-radius: 15px; border: none; background: #444; color: white; font-weight: bold; font-size: 1.2rem; }
+        button:active { background: #666; transform: scale(0.95); }
+        .up { grid-column: 2; background: #e74c3c; }
+        .left { grid-column: 1; background: #3498db; }
+        .right { grid-column: 3; background: #f1c40f; color: black; }
+        .down { grid-column: 2; background: #2ecc71; }
+        #connectBtn { padding: 15px 30px; font-size: 1rem; border-radius: 30px; background: #9b59b6; color: white; margin-top: 20px; }
     </style>
 </head>
 <body>
-
-    <!-- SECTION 1: FOR UNSUPPORTED BROWSERS (Safari/iPhone) -->
-    <div id="safari-view" class="card hidden">
-        <h2>📱 iPhone Detected</h2>
-        <p>Safari doesn't support Game Controllers. To play, use the <b>Bluefy</b> browser.</p>
-        
-        <div class="step">
-            1. Download <b>Bluefy</b> from the App Store.<br>
-            2. Copy this URL.<br>
-            3. Paste it into Bluefy.
-        </div>
-
-        <button class="launch-btn" onclick="copyUrl()">Copy URL & Open App Store</button>
-    </div>
-
-    <!-- SECTION 2: THE ACTUAL CONTROLLER (Chrome/Bluefy) -->
-    <div id="controller-view" class="card hidden">
-        <h2 id="status-text">Pico Arcade</h2>
-        <button id="connectBtn" class="launch-btn" onclick="connect()">CONNECT TO ARCADE</button>
-        
-        <div class="grid">
-            <button class="up" ontouchstart="send('UP')">UP</button>
-            <button class="left" ontouchstart="send('LEFT')">LEFT</button>
-            <button class="right" ontouchstart="send('RIGHT')">RIGHT</button>
-            <button class="down" ontouchstart="send('DOWN')">DOWN</button>
-        </div>
+    <h1>Pico Arcade</h1>
+    <button id="connectBtn" onclick="connect()">Connect to Pico</button>
+    
+    <div class="grid">
+        <button class="up" ontouchstart="send('UP')">UP</button>
+        <button class="left" ontouchstart="send('LEFT')">LEFT</button>
+        <button class="right" ontouchstart="send('RIGHT')">RIGHT</button>
+        <button class="down" ontouchstart="send('DOWN')">DOWN</button>
     </div>
 
     <script>
-        const s_uuid = '0000181a-0000-1000-8000-00805f9b34fb';
-        const c_uuid = '00002a6e-0000-1000-8000-00805f9b34fb';
         let char;
-
-        // BROWSER DETECTION
-        window.onload = function() {
-            if (navigator.bluetooth) {
-                // Browser supports BLE (Chrome/Bluefy)
-                document.getElementById('controller-view').classList.remove('hidden');
-            } else {
-                // Browser does NOT support BLE (Safari)
-                document.getElementById('safari-view').classList.remove('hidden');
-            }
-        };
-
-        function copyUrl() {
-            navigator.clipboard.writeText(window.location.href);
-            alert("URL Copied! Opening App Store...");
-            window.location.href = "https://apps.apple.com/app/id1492822055"; // Bluefy link
-        }
+	const serviceUuid = '0000181a-0000-1000-8000-00805f9b34fb';
+	const charUuid = '00002a6e-0000-1000-8000-00805f9b34fb';
 
         async function connect() {
             try {
                 const device = await navigator.bluetooth.requestDevice({
                     filters: [{ name: 'Pico-Snake' }],
-                    optionalServices: [s_uuid]
+                    optionalServices: [serviceUuid]
                 });
                 const server = await device.gatt.connect();
-                const service = await server.getPrimaryService(s_uuid);
-                char = await service.getCharacteristic(c_uuid);
-                document.getElementById('status-text').innerText = "READY! ✅";
-                document.getElementById('connectBtn').style.display = "none";
-            } catch (err) {
-                alert("Connection failed. Make sure Pico is on!");
+                const service = await server.getPrimaryService(serviceUuid);
+                char = await service.getCharacteristic(charUuid);
+                document.getElementById('connectBtn').innerText = "CONNECTED";
+                document.getElementById('connectBtn').style.background = "#27ae60";
+            } catch (e) {
+                console.log(e);
+                alert("Connection failed: " + e);
             }
         }
 
         async function send(cmd) {
-            if (char) {
-                try {
-                    await char.writeValueWithoutResponse(new TextEncoder().encode(cmd));
-                } catch (e) { console.log(e); }
-            }
-        }
+    		if (char) {
+        		try {
+            			// Convert string to a specialized byte array
+            			const encoder = new TextEncoder();
+            			const data = encoder.encode(cmd);
+            
+            			// Use writeValueWithoutResponse for speed and to avoid handshake hangs
+            			await char.writeValueWithoutResponse(data);
+            			console.log("Sent: " + cmd);
+        		} catch (e) {
+            			console.log("Send failed", e);
+        		}
+    		} else {
+        		console.log("Not connected yet!");
+    	}
+}
     </script>
 </body>
 </html>
