@@ -1,25 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pico Arcade Controller</title>
+    <title>Pico Arcade Launcher</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #1a1a1a; color: white; margin: 0; overflow: hidden; }
-        .container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        .grid { display: grid; grid-template-columns: 100px 100px 100px; gap: 15px; margin-top: 30px; }
-        button { width: 90px; height: 90px; border-radius: 50%; border: none; background: #333; color: white; font-size: 1.2rem; font-weight: bold; -webkit-tap-highlight-color: transparent; }
-        button:active { background: #555; transform: scale(0.9); }
+        body { font-family: -apple-system, sans-serif; text-align: center; background: #121212; color: white; margin: 0; padding: 20px; }
+        .hidden { display: none; }
+        .card { background: #1e1e1e; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 400px; margin: auto; }
+        
+        /* Controller Styles */
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 30px; }
+        .btn { width: 90px; height: 90px; border-radius: 50%; border: none; background: #333; color: white; font-size: 1.2rem; font-weight: bold; }
         .up { grid-column: 2; background: #ff4757; }
         .left { grid-column: 1; background: #1e90ff; }
         .right { grid-column: 3; background: #ffa502; }
         .down { grid-column: 2; background: #2ed573; }
-        #status { padding: 15px 30px; border-radius: 25px; background: #5f27cd; cursor: pointer; margin-bottom: 20px; }
+        
+        /* Warning/Launch Styles */
+        .launch-btn { background: #9b59b6; color: white; padding: 15px 30px; border-radius: 30px; text-decoration: none; display: inline-block; font-weight: bold; margin-top: 20px; }
+        .step { text-align: left; margin: 20px 0; font-size: 0.9rem; color: #bbb; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div id="status" onclick="connect()">CONNECT TO ARCADE</div>
+
+    <!-- SECTION 1: FOR UNSUPPORTED BROWSERS (Safari/iPhone) -->
+    <div id="safari-view" class="card hidden">
+        <h2>📱 iPhone Detected</h2>
+        <p>Safari doesn't support Game Controllers. To play, use the <b>Bluefy</b> browser.</p>
+        
+        <div class="step">
+            1. Download <b>Bluefy</b> from the App Store.<br>
+            2. Copy this URL.<br>
+            3. Paste it into Bluefy.
+        </div>
+
+        <button class="launch-btn" onclick="copyUrl()">Copy URL & Open App Store</button>
+    </div>
+
+    <!-- SECTION 2: THE ACTUAL CONTROLLER (Chrome/Bluefy) -->
+    <div id="controller-view" class="card hidden">
+        <h2 id="status-text">Pico Arcade</h2>
+        <button id="connectBtn" class="launch-btn" onclick="connect()">CONNECT TO ARCADE</button>
         
         <div class="grid">
             <button class="up" ontouchstart="send('UP')">UP</button>
@@ -30,9 +52,26 @@
     </div>
 
     <script>
-        let char;
         const s_uuid = '0000181a-0000-1000-8000-00805f9b34fb';
         const c_uuid = '00002a6e-0000-1000-8000-00805f9b34fb';
+        let char;
+
+        // BROWSER DETECTION
+        window.onload = function() {
+            if (navigator.bluetooth) {
+                // Browser supports BLE (Chrome/Bluefy)
+                document.getElementById('controller-view').classList.remove('hidden');
+            } else {
+                // Browser does NOT support BLE (Safari)
+                document.getElementById('safari-view').classList.remove('hidden');
+            }
+        };
+
+        function copyUrl() {
+            navigator.clipboard.writeText(window.location.href);
+            alert("URL Copied! Opening App Store...");
+            window.location.href = "https://apps.apple.com/app/id1492822055"; // Bluefy link
+        }
 
         async function connect() {
             try {
@@ -43,21 +82,18 @@
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService(s_uuid);
                 char = await service.getCharacteristic(c_uuid);
-                document.getElementById('status').innerText = "CONNECTED ✅";
-                document.getElementById('status').style.background = "#10ac84";
+                document.getElementById('status-text').innerText = "READY! ✅";
+                document.getElementById('connectBtn').style.display = "none";
             } catch (err) {
-                alert("Connect Error: " + err);
+                alert("Connection failed. Make sure Pico is on!");
             }
         }
 
         async function send(cmd) {
-            if (!char) return;
-            try {
-                const data = new TextEncoder().encode(cmd);
-                // Using WithoutResponse is critical for speed and avoiding stalls
-                await char.writeValueWithoutResponse(data);
-            } catch (err) {
-                console.log("Send Error:", err);
+            if (char) {
+                try {
+                    await char.writeValueWithoutResponse(new TextEncoder().encode(cmd));
+                } catch (e) { console.log(e); }
             }
         }
     </script>
