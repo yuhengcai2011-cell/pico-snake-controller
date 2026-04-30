@@ -50,22 +50,14 @@
         }
 
         async function send(cmd) {
-    		if (char) {
-        		try {
-            			// Convert string to a specialized byte array
-            			const encoder = new TextEncoder();
-            			const data = encoder.encode(cmd);
-            
-            			// Use writeValueWithoutResponse for speed and to avoid handshake hangs
-            			await char.writeValueWithoutResponse(data);
-            			console.log("Sent: " + cmd);
-        		} catch (e) {
-            			console.log("Send failed", e);
-        		}
-    		} else {
-        		console.log("Not connected yet!");
-    	}
-}
+            if (char) {
+                try {
+                    await char.writeValue(new TextEncoder().encode(cmd));
+                } catch (e) {
+                    console.log("Send failed", e);
+                }
+            }
+        }
     </script>
 </body>
 </html>
