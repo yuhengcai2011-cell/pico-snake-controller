@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pico Arcade Controller</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #1a1a1a; color: white; margin: 0; overflow: hidden; }
+        .container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        .grid { display: grid; grid-template-columns: 100px 100px 100px; gap: 15px; margin-top: 30px; }
+        button { width: 90px; height: 90px; border-radius: 50%; border: none; background: #333; color: white; font-size: 1.2rem; font-weight: bold; -webkit-tap-highlight-color: transparent; }
+        button:active { background: #555; transform: scale(0.9); }
+        .up { grid-column: 2; background: #ff4757; }
+        .left { grid-column: 1; background: #1e90ff; }
+        .right { grid-column: 3; background: #ffa502; }
+        .down { grid-column: 2; background: #2ed573; }
+        #status { padding: 15px 30px; border-radius: 25px; background: #5f27cd; cursor: pointer; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="status" onclick="connect()">CONNECT TO ARCADE</div>
+        
+        <div class="grid">
+            <button class="up" ontouchstart="send('UP')">UP</button>
+            <button class="left" ontouchstart="send('LEFT')">LEFT</button>
+            <button class="right" ontouchstart="send('RIGHT')">RIGHT</button>
+            <button class="down" ontouchstart="send('DOWN')">DOWN</button>
+        </div>
+    </div>
+
+    <script>
+        let char;
+        const s_uuid = '0000181a-0000-1000-8000-00805f9b34fb';
+        const c_uuid = '00002a6e-0000-1000-8000-00805f9b34fb';
+
+        async function connect() {
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'Pico-Snake' }],
+                    optionalServices: [s_uuid]
+                });
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(s_uuid);
+                char = await service.getCharacteristic(c_uuid);
+                document.getElementById('status').innerText = "CONNECTED ✅";
+                document.getElementById('status').style.background = "#10ac84";
+            } catch (err) {
+                alert("Connect Error: " + err);
+            }
+        }
+
+        async function send(cmd) {
+            if (!char) return;
+            try {
+                const data = new TextEncoder().encode(cmd);
+                // Using WithoutResponse is critical for speed and avoiding stalls
+                await char.writeValueWithoutResponse(data);
+            } catch (err) {
+                console.log("Send Error:", err);
+            }
+        }
+    </script>
+</body>
+</html>
